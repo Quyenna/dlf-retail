@@ -1,0 +1,89 @@
+---
+profile: default
+
+variables:
+    a: hello
+    b: "{{ variables.a }} world"
+    c: "{{ env('SHELL') }}"
+    d: "{{ env('ENV_VAR_NOT_DEFINED', 'foo') }}"
+    e: "{{ now() }}"
+    f: "{{ now(tz='UTC', format='%Y-%m-%d') }}"
+
+    my_string_var: "Hi There!"
+    my_env_var: "{{ env('USER', 'guest') }}"
+    my_date_var: "{{ now(format='%Y-%m-%d') }}"
+    my_string_concat_var1: "{{ engine.type }} running at {{ engine.master }}"
+    my_string_concat_var2: "{{ variables.my_string_var }}: the current date is {{ variables.my_date_var }}"
+
+providers:
+    localfs:
+        service: file
+        path: data
+        format: csv
+        options:
+            header: True
+            inferSchema: True
+    minio:
+        service: minio
+        hostname: minio
+        username: minio-username
+        password: "{{ env('MINIO_USER_PASSWORD') }}"
+        path: data
+        format: parquet
+        options:
+            header: True
+            inferSchema: True
+
+    postgres:
+        service: postgres
+        hostname: postgres
+        username: postgres
+        password: "{{ env('POSTGRES_USER_PASSWORD') }}"
+        path: pagila
+        format: jdbc
+
+    clickhouse:
+        service: clickhouse
+        hostname: clickhouse
+        username: default
+        password: "{{ env('CLICKHOUSE_USER_PASSWORD') }}"
+        path: tax_bills
+        format: jdbc
+
+resources:
+    my_datatable:
+        path: test.csv
+        provider: localfs
+        options:
+            mode: append
+
+engine:
+    type: spark
+    master: local[*]
+    timezone: naive
+
+loggers:
+    root:
+        severity: info
+
+    datalabframework:
+        name: dlf
+        stdout:
+            enable: true
+            severity: notice
+        file:
+            enable: true
+            severity: notice
+            path: dlf.log
+        kafka:
+            enable: true
+            severity: info
+            hosts:
+                - kafka:9092
+            topic: dlf
+
+---
+profile: prod
+engine:
+    type: spark
+    master: spark://spark-master:7077
